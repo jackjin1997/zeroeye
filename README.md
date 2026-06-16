@@ -1,5 +1,13 @@
 # Tent of Trials
 
+<p align="center">
+  <a href="https://github.com/lobster-trap/zeroeye/actions/workflows/diagnostic-build-log.yml"><img alt="Diagnostic build status" src="https://img.shields.io/github/actions/workflow/status/lobster-trap/zeroeye/diagnostic-build-log.yml?branch=main&label=diagnostic%20build&style=flat-square"></a>
+  <a href="https://github.com/lobster-trap/zeroeye/tree/main/diagnostic"><img alt="Diagnostic coverage" src="https://img.shields.io/badge/coverage-diagnostic%20tracked-success?style=flat-square"></a>
+  <a href="https://github.com/rust-lang/rustfmt"><img alt="Code style" src="https://img.shields.io/badge/code%20style-rustfmt%20%2B%20prettier-46a2f1?style=flat-square"></a>
+  <a href="#code-licenses"><img alt="License" src="https://img.shields.io/badge/license-MIT%20%2B%20Apache--2.0-blue?style=flat-square"></a>
+  <a href="#getting-started"><img alt="Primary stack" src="https://img.shields.io/badge/stack-Rust%20%7C%20TypeScript%20%7C%20Go%20%7C%20Python-2f74c0?style=flat-square"></a>
+</p>
+
 Trading and risk platform.
 
 ## Getting Started
