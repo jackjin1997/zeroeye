@@ -129,9 +129,48 @@ class MockBackendApiClient:
             status_code = _first_available(operation.responses, (401, 403), default=400)
             return MockResponse(status_code, {"code": 4002, "message": "Authentication required"})
 
-        if operation.request_body_required and not payload:
-            status_code = _first_available(operation.responses, (422, 400, 409), default=422)
-            return MockResponse(status_code, {"code": 4001, "message": "Invalid request parameters"})
+        if operation.request_body_required:
+            if payload is None:
+                status_code = _first_available(operation.responses, (422, 400, 409), default=422)
+                return MockResponse(status_code, {"code": 4001, "message": "Invalid request parameters"})
+            
+            # Check for missing required fields
+            missing_fields = [field for field in operation.required_fields if field not in payload]
+            if missing_fields:
+                status_code = _first_available(operation.responses, (422, 400, 409), default=422)
+                return MockResponse(status_code, {"code": 4001, "message": f"Missing required parameters: {', '.join(missing_fields)}"})
+
+            # Check for malformed fields (incorrect types)
+            schema = _request_schema(self.spec, operation.path, operation.method)
+            properties = schema.get("properties", {}) if isinstance(schema, Mapping) else {}
+            for field, val in payload.items():
+                if field in properties:
+                    field_schema = properties[field]
+                    if isinstance(field_schema, Mapping):
+                        expected_type = field_schema.get("type")
+                        is_malformed = False
+                        if expected_type == "boolean":
+                            if not isinstance(val, bool):
+                                is_malformed = True
+                        elif expected_type == "integer":
+                            if isinstance(val, bool) or not isinstance(val, int):
+                                is_malformed = True
+                        elif expected_type == "number":
+                            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                                is_malformed = True
+                        elif expected_type == "array":
+                            if not isinstance(val, list):
+                                is_malformed = True
+                        elif expected_type == "object":
+                            if not isinstance(val, dict):
+                                is_malformed = True
+                        elif expected_type == "string":
+                            if not isinstance(val, str):
+                                is_malformed = True
+                        
+                        if is_malformed:
+                            status_code = _first_available(operation.responses, (422, 400, 409), default=422)
+                            return MockResponse(status_code, {"code": 4001, "message": f"Malformed field: {field}"})
 
         status_code = min(operation.success_statuses or (200,))
         return MockResponse(

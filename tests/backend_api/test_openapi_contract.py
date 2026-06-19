@@ -1,4 +1,8 @@
-"""Tests for the documented backend API contract."""
+"""Tests for the documented backend API contract.
+
+To run these tests locally, execute:
+    python3 -m pytest -v tests/backend_api
+"""
 
 from __future__ import annotations
 
@@ -102,3 +106,89 @@ def test_async_request_wrapper(api_client, auth_token):
 
     assert response.status_code == 200
     assert response.body["path"] == "/users"
+
+
+def test_missing_required_fields_in_payload_returns_error(api_client, api_operations, valid_payloads, auth_token, api_spec):
+    body_operations = [op for op in api_operations if op.request_body_required and op.required_fields]
+    
+    for operation in body_operations:
+        token = None if operation.path.startswith("/auth/") else auth_token
+        base_payload = valid_payloads.get((operation.method, operation.path))
+        if not base_payload:
+            continue
+            
+        for missing_field in operation.required_fields:
+            # Create payload missing one required field
+            payload = {k: v for k, v in base_payload.items() if k != missing_field}
+            response = api_client.request(operation.method, operation.path, payload=payload, token=token)
+            
+            assert response.status_code in {400, 409, 422}
+            assert response.body["code"] == 4001
+            assert "Missing required parameters" in response.body["message"]
+
+
+def test_malformed_fields_in_payload_returns_error(api_client, api_operations, valid_payloads, auth_token, api_spec):
+    from backend.api_contract import _request_schema
+    body_operations = [op for op in api_operations if op.request_body_required]
+    
+    for operation in body_operations:
+        token = None if operation.path.startswith("/auth/") else auth_token
+        base_payload = valid_payloads.get((operation.method, operation.path))
+        if not base_payload:
+            continue
+            
+        schema = _request_schema(api_spec, operation.path, operation.method)
+        properties = schema.get("properties", {})
+        if not isinstance(properties, dict):
+            continue
+            
+        for field, field_schema in properties.items():
+            if not isinstance(field_schema, dict):
+                continue
+            expected_type = field_schema.get("type")
+            if not expected_type or field not in base_payload:
+                continue
+                
+            # Create a malformed value of a different type
+            if expected_type == "string":
+                malformed_value = 12345
+            elif expected_type in {"integer", "number"}:
+                malformed_value = "not-a-number"
+            elif expected_type == "boolean":
+                malformed_value = "not-a-boolean"
+            elif expected_type == "array":
+                malformed_value = "not-an-array"
+            elif expected_type == "object":
+                malformed_value = "not-an-object"
+            else:
+                continue
+                
+            payload = dict(base_payload)
+            payload[field] = malformed_value
+            
+            response = api_client.request(operation.method, operation.path, payload=payload, token=token)
+            
+            assert response.status_code in {400, 409, 422}
+            assert response.body["code"] == 4001
+            assert "Malformed field" in response.body["message"]
+
+
+def test_async_request_wrapper_negative_cases(api_client, api_operations, auth_token):
+    # Case 1: Missing auth token for protected endpoint via async wrapper
+    protected_operations = [op for op in api_operations if not op.path.startswith("/auth/")]
+    if protected_operations:
+        operation = protected_operations[0]
+        response = asyncio.run(api_client.request_async(operation.method, operation.path, token=None))
+        assert response.status_code in {401, 403, 400}
+        assert response.body["code"] == 4002
+        assert "Authentication required" in response.body["message"]
+        
+    # Case 2: Missing required payload for body-requiring endpoint via async wrapper
+    body_operations = [op for op in api_operations if op.request_body_required]
+    if body_operations:
+        operation = body_operations[0]
+        token = None if operation.path.startswith("/auth/") else auth_token
+        response = asyncio.run(api_client.request_async(operation.method, operation.path, payload=None, token=token))
+        assert response.status_code in {400, 409, 422}
+        assert response.body["code"] == 4001
+        assert "Invalid request parameters" in response.body["message"]
