@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-06-20T11:43:47.381601+00:00",
+  "commit": "2b54872c",
+  "diagnostic_logd": "diagnostic/build-2b54872c.logd",
+  "diagnostic_logd_error": null,
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": "cd11761cda63794e969c",
+  "decrypt_command": "encryptly unpack diagnostic/build-2b54872c.logd <outdir> --password cd11761cda63794e969c",
+  "total_modules": 10,
+  "passed": 2,
+  "failed": 8,
+  "modules": [
+    {
+      "name": "backend",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'cargo'"
+    },
+    {
+      "name": "frontend",
+      "status": "FAIL",
+      "elapsed_seconds": 1.591,
+      "artifact": null,
+      "output": "> tent-frontend@0.0.0 build\n> tsc -b && vite build\nsh: 1: tsc: not found"
+    },
+    {
+      "name": "market",
+      "status": "PASS",
+      "elapsed_seconds": 1.23,
+      "artifact": "/data/data/com.termux/files/home/jackjin-zeroeye/market/market",
+      "output": ""
+    },
+    {
+      "name": "frailbox",
+      "status": "PASS",
+      "elapsed_seconds": 0.017,
+      "artifact": "/data/data/com.termux/files/home/jackjin-zeroeye/frailbox/frailbox",
+      "output": "make: Nothing to be done for 'all'."
+    },
+    {
+      "name": "engine",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'cmake'"
+    },
+    {
+      "name": "compliance",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'javac'"
+    },
+    {
+      "name": "v2-market-stream",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'ruby'"
+    },
+    {
+      "name": "nfc-scanner",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'luac'"
+    },
+    {
+      "name": "openapi-haskell",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'ghc'"
+    },
+    {
+      "name": "openapi-tools",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null,
+      "output": "Command not found: [Errno 2] No such file or directory: 'luac'"
+    }
+  ],
+  "pr_note": "Include the encrypted diagnostic logd artifact(s): diagnostic/build-2b54872c.logd. The encrypted .logd is the required diagnostic content for PR review; this JSON file is metadata. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}
