@@ -176,8 +176,13 @@ func TestOrderBook_SnapshotImmutability(t *testing.T) {
 		RemainingQty: decimal.NewFromFloat(1.0),
 	}
 
-	_, _ = ob.AddOrder(orderBid)
-	_, _ = ob.AddOrder(orderAsk)
+	if _, err := ob.AddOrder(orderBid); err != nil {
+		t.Fatalf("failed to add bid order: %v", err)
+	}
+	if _, err := ob.AddOrder(orderAsk); err != nil {
+		t.Fatalf("failed to add ask order: %v", err)
+	}
+
 
 	snapshot := ob.GetSnapshot()
 
