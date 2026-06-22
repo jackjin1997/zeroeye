@@ -1,0 +1,64 @@
+name: Generate PR diagnostic
+
+on:
+  push:
+    branches:
+      - bounty-2-orderbook-tests
+
+permissions:
+  contents: write
+
+jobs:
+  generate-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: market/go.mod
+          cache-dependency-path: market/go.sum
+
+      - name: Run orderbook tests
+        working-directory: market
+        run: go test ./orderbook
+
+      - name: Generate encrypted market diagnostic
+        run: |
+          chmod +x tools/encryptly/linux-x64/encryptly
+          python3 build.py -m market
+
+      - name: Sanitize diagnostic metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path.cwd().resolve()
+          for path in Path("diagnostic").glob("build-*.json"):
+              if path.name == "build-00000000.json":
+                  continue
+              data = json.loads(path.read_text(encoding="utf-8"))
+              for module in data.get("modules", []):
+                  artifact = module.get("artifact")
+                  if not artifact:
+                      continue
+                  artifact_path = Path(artifact)
+                  if artifact_path.is_absolute():
+                      try:
+                          module["artifact"] = str(artifact_path.resolve().relative_to(root))
+                      except ValueError:
+                          module["artifact"] = artifact_path.name
+              path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Commit diagnostic and remove temporary workflow
+        run: |
+          rm .github/workflows/pr3-generate-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostic .github/workflows/pr3-generate-diagnostic.yml
+          git commit -m "Add encrypted build diagnostic"
+          git push
