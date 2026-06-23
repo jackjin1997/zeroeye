@@ -7,6 +7,7 @@ import (
 	"github.com/tent-of-trials/market/types"
 )
 
+// TestCancelBidRemovesBidLevelAndOrder verifies cancellation clears depth and the order index.
 func TestCancelBidRemovesBidLevelAndOrder(t *testing.T) {
 	book := newTestOrderBook()
 	order := newTestOrder("bid-1", types.Buy, "100.00", "2.50")
@@ -34,6 +35,78 @@ func TestCancelBidRemovesBidLevelAndOrder(t *testing.T) {
 	}
 }
 
+// TestCancelBidPreservesOtherPriceLevels verifies cancellation removes only the matching level.
+func TestCancelBidPreservesOtherPriceLevels(t *testing.T) {
+	book := newTestOrderBook()
+	orders := []*types.Order{
+		newTestOrder("bid-100", types.Buy, "100.00", "1.00"),
+		newTestOrder("bid-99", types.Buy, "99.00", "2.00"),
+		newTestOrder("bid-98", types.Buy, "98.00", "3.00"),
+	}
+
+	for _, order := range orders {
+		if _, err := book.AddOrder(order); err != nil {
+			t.Fatalf("AddOrder(%s) error = %v", order.ID, err)
+		}
+	}
+
+	if err := book.CancelOrder("bid-99"); err != nil {
+		t.Fatalf("CancelOrder() error = %v", err)
+	}
+
+	bids := book.GetSnapshot().Bids
+	if got := len(bids); got != 2 {
+		t.Fatalf("bid depth after cancel = %d, want 2", got)
+	}
+	if !bids[0].Price.Equal(decimal.RequireFromString("100.00")) {
+		t.Fatalf("best bid after cancel = %s, want 100.00", bids[0].Price)
+	}
+	if !bids[1].Price.Equal(decimal.RequireFromString("98.00")) {
+		t.Fatalf("second bid after cancel = %s, want 98.00", bids[1].Price)
+	}
+	if _, exists := book.orders["bid-99"]; exists {
+		t.Fatal("cancelled middle bid still exists in order index")
+	}
+}
+
+// TestCancelOneBidAtSharedPriceKeepsRemainingDepth verifies one same-price order remains visible.
+func TestCancelOneBidAtSharedPriceKeepsRemainingDepth(t *testing.T) {
+	book := newTestOrderBook()
+	first := newTestOrder("bid-first", types.Buy, "100.00", "2.00")
+	second := newTestOrder("bid-second", types.Buy, "100.00", "3.00")
+
+	for _, order := range []*types.Order{first, second} {
+		if _, err := book.AddOrder(order); err != nil {
+			t.Fatalf("AddOrder(%s) error = %v", order.ID, err)
+		}
+	}
+
+	if err := book.CancelOrder(first.ID); err != nil {
+		t.Fatalf("CancelOrder() error = %v", err)
+	}
+
+	bids := book.GetSnapshot().Bids
+	if got := len(bids); got != 1 {
+		t.Fatalf("bid depth after one same-price cancel = %d, want 1", got)
+	}
+	if !bids[0].Price.Equal(decimal.RequireFromString("100.00")) {
+		t.Fatalf("remaining bid price = %s, want 100.00", bids[0].Price)
+	}
+	if !bids[0].Quantity.Equal(decimal.RequireFromString("3.00")) {
+		t.Fatalf("remaining bid quantity = %s, want 3.00", bids[0].Quantity)
+	}
+	if bids[0].Count != 1 {
+		t.Fatalf("remaining bid count = %d, want 1", bids[0].Count)
+	}
+	if _, exists := book.orders[first.ID]; exists {
+		t.Fatal("cancelled same-price bid still exists in order index")
+	}
+	if _, exists := book.orders[second.ID]; !exists {
+		t.Fatal("remaining same-price bid was removed from order index")
+	}
+}
+
+// TestCancelAskRemovesAskLevel verifies ask cancellation clears the matching depth level.
 func TestCancelAskRemovesAskLevel(t *testing.T) {
 	book := newTestOrderBook()
 	order := newTestOrder("ask-1", types.Sell, "101.00", "1.25")
@@ -54,6 +127,7 @@ func TestCancelAskRemovesAskLevel(t *testing.T) {
 	}
 }
 
+// TestCancelUnknownOrderReturnsErrOrderNotFound verifies unknown IDs return the documented error.
 func TestCancelUnknownOrderReturnsErrOrderNotFound(t *testing.T) {
 	book := newTestOrderBook()
 
@@ -62,6 +136,7 @@ func TestCancelUnknownOrderReturnsErrOrderNotFound(t *testing.T) {
 	}
 }
 
+// TestClosedBookRejectsAddAndCancel verifies closed books reject both supported mutations.
 func TestClosedBookRejectsAddAndCancel(t *testing.T) {
 	book := newTestOrderBook()
 	book.Close()
@@ -74,6 +149,7 @@ func TestClosedBookRejectsAddAndCancel(t *testing.T) {
 	}
 }
 
+// TestSnapshotReturnsCopiesOfBidAndAskLevels verifies callers cannot mutate internal depth.
 func TestSnapshotReturnsCopiesOfBidAndAskLevels(t *testing.T) {
 	book := newTestOrderBook()
 	bid := newTestOrder("bid-1", types.Buy, "100.00", "2.00")
@@ -107,6 +183,7 @@ func TestSnapshotReturnsCopiesOfBidAndAskLevels(t *testing.T) {
 	}
 }
 
+// newTestOrderBook returns a consistently configured order book for focused tests.
 func newTestOrderBook() *OrderBook {
 	return NewOrderBook("BTC-USD", Config{
 		MaxDepth:       10,
@@ -115,6 +192,7 @@ func newTestOrderBook() *OrderBook {
 	})
 }
 
+// newTestOrder returns a limit order with matching total and remaining quantities.
 func newTestOrder(id string, side types.OrderSide, price, quantity string) *types.Order {
 	qty := decimal.RequireFromString(quantity)
 	return &types.Order{
