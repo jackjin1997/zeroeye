@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-06-23T14:11:25.072689+00:00",
+  "commit": "93e73b32",
+  "diagnostic_logd": "diagnostic/build-93e73b32.logd",
+  "diagnostic_logd_error": null,
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": "6c1a308594725982120a",
+  "decrypt_command": "encryptly unpack diagnostic/build-93e73b32.logd <outdir> --password 6c1a308594725982120a",
+  "total_modules": 1,
+  "passed": 1,
+  "failed": 0,
+  "modules": [
+    {
+      "name": "market",
+      "status": "PASS",
+      "elapsed_seconds": 0.45,
+      "artifact": "market/market",
+      "output": ""
+    }
+  ],
+  "pr_note": "Include the encrypted diagnostic logd artifact(s): diagnostic/build-93e73b32.logd. The encrypted .logd is the required diagnostic content for PR review; this JSON file is metadata. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}
