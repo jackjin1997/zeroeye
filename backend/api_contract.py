@@ -129,9 +129,18 @@ class MockBackendApiClient:
             status_code = _first_available(operation.responses, (401, 403), default=400)
             return MockResponse(status_code, {"code": 4002, "message": "Authentication required"})
 
-        if operation.request_body_required and not payload:
+        if operation.request_body_required:
             status_code = _first_available(operation.responses, (422, 400, 409), default=422)
-            return MockResponse(status_code, {"code": 4001, "message": "Invalid request parameters"})
+            if payload is None:
+                return _contract_error(
+                    status_code,
+                    "Invalid request parameters",
+                    {"body": "required"},
+                )
+
+            validation_error = _payload_validation_error(self.spec, operation, payload)
+            if validation_error:
+                return _contract_error(status_code, "Invalid request parameters", validation_error)
 
         status_code = min(operation.success_statuses or (200,))
         return MockResponse(
@@ -234,6 +243,57 @@ def _first_available(responses: tuple[int, ...], candidates: tuple[int, ...], *,
         if candidate in responses:
             return candidate
     return default
+
+
+def _contract_error(status_code: int, message: str, details: Mapping[str, Any]) -> MockResponse:
+    return MockResponse(status_code, {"code": 4001, "message": message, "details": details})
+
+
+def _payload_validation_error(
+    spec: Mapping[str, Any],
+    operation: ApiOperation,
+    payload: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    missing = [field for field in operation.required_fields if field not in payload]
+    if missing:
+        return {"missing": missing}
+
+    schema = _request_schema(spec, operation.path, operation.method)
+    properties = schema.get("properties", {}) if isinstance(schema, Mapping) else {}
+    if not isinstance(properties, Mapping):
+        return None
+
+    malformed = []
+    for field, value in payload.items():
+        field_schema = properties.get(field)
+        if not isinstance(field_schema, Mapping):
+            continue
+        expected_type = field_schema.get("type")
+        if expected_type and not _matches_json_schema_type(value, expected_type):
+            malformed.append({"field": field, "expected": expected_type})
+
+    return {"malformed": malformed} if malformed else None
+
+
+def _matches_json_schema_type(value: Any, expected_type: Any) -> bool:
+    if isinstance(expected_type, list):
+        return any(_matches_json_schema_type(value, item) for item in expected_type)
+
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "object":
+        return isinstance(value, Mapping)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "null":
+        return value is None
+    return True
 
 
 def _sample_value(field: str, schema: Any) -> Any:
