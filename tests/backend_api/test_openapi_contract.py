@@ -70,6 +70,42 @@ def test_missing_required_payload_returns_validation_error(api_client, api_opera
 
         assert response.status_code in {400, 409, 422}
         assert response.body["code"] == 4001
+        assert response.body["details"]["body"] == "required"
+
+
+def test_missing_required_field_returns_structured_contract_error(api_client):
+    response = api_client.request(
+        "POST",
+        "/auth/login",
+        payload={"email": "user@example.com"},
+    )
+
+    assert response.status_code in {400, 409, 422}
+    assert response.body["code"] == 4001
+    assert response.body["message"] == "Invalid request parameters"
+    assert response.body["details"] == {"missing": ["password"]}
+
+
+def test_malformed_field_type_returns_structured_contract_error(api_client):
+    response = api_client.request(
+        "POST",
+        "/auth/login",
+        payload={"email": "user@example.com", "password": "secret", "remember_me": "yes"},
+    )
+
+    assert response.status_code in {400, 409, 422}
+    assert response.body["code"] == 4001
+    assert response.body["details"] == {"malformed": [{"field": "remember_me", "expected": "boolean"}]}
+
+
+def test_async_request_wrapper_returns_negative_contract_response(api_client):
+    response = asyncio.run(
+        api_client.request_async("POST", "/auth/login", payload={"email": "user@example.com"})
+    )
+
+    assert response.status_code in {400, 409, 422}
+    assert response.body["code"] == 4001
+    assert response.body["details"]["missing"] == ["password"]
 
 
 def test_internal_error_path_is_mocked_without_external_dependencies(api_client):

@@ -10,4 +10,10 @@ Coverage includes:
 - one success-path assertion for every documented GET and POST operation
 - authentication, not-found, request-validation, and internal-error cases
 - empty, large, and unicode payload edge cases
-- async request handling through pytest-asyncio
+- async request handling through the standard library, without optional pytest plugins
+
+Run the focused suite locally with:
+
+```bash
+python3 -m pytest -q tests/backend_api
+```
