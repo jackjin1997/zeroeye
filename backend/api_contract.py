@@ -202,12 +202,12 @@ def validate_enum(value: str, field_name: str, variants: Sequence[str]) -> Valid
 
 
 def validate_email(value: str, field_name: str = "email") -> ValidationResult:
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\Z"
     return validate_pattern(value, field_name, pattern)
 
 
 def validate_uuid(value: str, field_name: str = "id") -> ValidationResult:
-    pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z"
     return validate_pattern(value, field_name, pattern)
 
 
@@ -240,12 +240,12 @@ def validate_timestamp(ts: int, field_name: str = "timestamp") -> ValidationResu
 
 
 def validate_symbol(symbol: str, field_name: str = "symbol") -> ValidationResult:
-    pattern = r"^[A-Z0-9]{2,10}/[A-Z0-9]{2,10}$"
+    pattern = r"^[A-Z0-9]{2,10}/[A-Z0-9]{2,10}\Z"
     return validate_pattern(value=symbol, field_name=field_name, pattern=pattern)
 
 
 def validate_instrument_id(instrument_id: str, field_name: str = "instrument_id") -> ValidationResult:
-    pattern = r"^[a-z0-9]{2,20}$"
+    pattern = r"^[a-z0-9]{2,20}\Z"
     return validate_pattern(value=instrument_id, field_name=field_name, pattern=pattern)
 
 
