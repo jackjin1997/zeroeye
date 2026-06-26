@@ -277,7 +277,9 @@ def validate_instrument_id(instrument_id: str, field_name: str = "instrument_id"
 def validate_price(price: float, field_name: str = "price") -> ValidationResult:
     """Validate price is positive and below maximum."""
     result = ValidationResult.ok()
-    if price <= 0.0:
+    if not math.isfinite(price):
+        result.add_error(field_name, "invalid_price", "Price must be finite")
+    elif price <= 0.0:
         result.add_error(field_name, "invalid_price", "Price must be positive")
     elif price >= 1_000_000_000.0:
         result.add_error(field_name, "max_exceeded", "Price exceeds maximum")
@@ -287,7 +289,9 @@ def validate_price(price: float, field_name: str = "price") -> ValidationResult:
 def validate_quantity(qty: float, field_name: str = "quantity") -> ValidationResult:
     """Validate quantity is positive and below maximum."""
     result = ValidationResult.ok()
-    if qty <= 0.0:
+    if not math.isfinite(qty):
+        result.add_error(field_name, "invalid_quantity", "Quantity must be finite")
+    elif qty <= 0.0:
         result.add_error(field_name, "invalid_quantity", "Quantity must be positive")
     elif qty >= 100_000_000.0:
         result.add_error(field_name, "max_exceeded", "Quantity exceeds maximum")
@@ -409,13 +413,13 @@ class MessageEnvelope:
                 f"Payload size {len(self.payload)} exceeds max {MAX_MESSAGE_SIZE}",
             )
 
-        if self.priority > 255:
+        if not 0 <= self.priority <= 255:
             result.add_error(
                 "priority", "invalid_priority",
                 f"Priority must be 0-255, got {self.priority}",
             )
 
-        if self.flags > 0xFFFF:
+        if not 0 <= self.flags <= 0xFFFF:
             result.add_error(
                 "flags", "invalid_flags",
                 f"Flags must be 0-0xFFFF, got {self.flags}",
