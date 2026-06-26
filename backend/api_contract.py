@@ -62,6 +62,7 @@ RPC_METHOD_IDS: Dict[int, str] = {
 # ---------------------------------------------------------------------------
 
 class Severity(Enum):
+    """Validation severity levels."""
     ERROR = "error"
     WARNING = "warning"
     INFO = "info"
@@ -73,12 +74,14 @@ class Severity(Enum):
 
 @dataclass
 class ValidationError:
+    """A single validation error with field, code, message, and severity."""
     field: str
     code: str
     message: str
     severity: Severity = Severity.ERROR
 
     def to_dict(self) -> Dict[str, str]:
+        """Serialize error to a dictionary."""
         return {
             "field": self.field,
             "code": self.code,
@@ -89,6 +92,7 @@ class ValidationError:
 
 @dataclass
 class ValidationResult:
+    """Aggregated validation result holding errors, warnings, and validity status."""
     valid: bool = True
     errors: List[ValidationError] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -96,29 +100,36 @@ class ValidationResult:
     # -- helpers -----------------------------------------------------------
 
     def add_error(self, fld: str, code: str, message: str) -> None:
+        """Append an error and mark result invalid."""
         self.valid = False
         self.errors.append(
             ValidationError(field=fld, code=code, message=message)
         )
 
     def add_warning(self, message: str) -> None:
+        """Append a non-fatal warning."""
         self.warnings.append(message)
 
     def combine(self, other: "ValidationResult") -> None:
+        """Merge another result into this one."""
         self.valid = self.valid and other.valid
         self.errors.extend(other.errors)
         self.warnings.extend(other.warnings)
 
     def has_errors(self) -> bool:
+        """Return True if any errors are present."""
         return len(self.errors) > 0
 
     def has_warnings(self) -> bool:
+        """Return True if any warnings are present."""
         return len(self.warnings) > 0
 
     def error_codes(self) -> List[str]:
+        """Return list of error code strings."""
         return [e.code for e in self.errors]
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize result to a dictionary."""
         return {
             "valid": self.valid,
             "errors": [e.to_dict() for e in self.errors],
@@ -129,10 +140,12 @@ class ValidationResult:
 
     @classmethod
     def ok(cls) -> "ValidationResult":
+        """Factory: create a valid result with no errors."""
         return cls(valid=True)
 
     @classmethod
     def error(cls, fld: str, code: str, message: str) -> "ValidationResult":
+        """Factory: create an invalid result with one error."""
         r = cls(valid=False)
         r.add_error(fld, code, message)
         return r
@@ -143,6 +156,7 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 
 def validate_required(value: Any, field_name: str) -> ValidationResult:
+    """Check that value is not None."""
     if value is None:
         return ValidationResult.error(field_name, "required", "Field is required")
     return ValidationResult.ok()
@@ -154,6 +168,7 @@ def validate_string_length(
     min_len: Optional[int] = None,
     max_len: Optional[int] = None,
 ) -> ValidationResult:
+    """Validate string length is within optional bounds."""
     result = ValidationResult.ok()
     length = len(value)
     if min_len is not None and length < min_len:
@@ -169,6 +184,7 @@ def validate_numeric_range(
     min_val: Optional[float] = None,
     max_val: Optional[float] = None,
 ) -> ValidationResult:
+    """Validate numeric value is finite and within optional bounds."""
     result = ValidationResult.ok()
     if math.isnan(value):
         result.add_error(field_name, "invalid_value", "Value must not be NaN")
@@ -184,6 +200,7 @@ def validate_numeric_range(
 
 
 def validate_pattern(value: str, field_name: str, pattern: str) -> ValidationResult:
+    """Check value matches a regex pattern using re.search."""
     if re.search(pattern, value):
         return ValidationResult.ok()
     return ValidationResult.error(
@@ -193,6 +210,7 @@ def validate_pattern(value: str, field_name: str, pattern: str) -> ValidationRes
 
 
 def validate_enum(value: str, field_name: str, variants: Sequence[str]) -> ValidationResult:
+    """Check value is one of the allowed variants."""
     if value in variants:
         return ValidationResult.ok()
     return ValidationResult.error(
@@ -202,16 +220,19 @@ def validate_enum(value: str, field_name: str, variants: Sequence[str]) -> Valid
 
 
 def validate_email(value: str, field_name: str = "email") -> ValidationResult:
+    """Validate email address format."""
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\Z"
     return validate_pattern(value, field_name, pattern)
 
 
 def validate_uuid(value: str, field_name: str = "id") -> ValidationResult:
+    """Validate UUID v4 format."""
     pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z"
     return validate_pattern(value, field_name, pattern)
 
 
 def validate_phone(phone: str, field_name: str = "phone") -> ValidationResult:
+    """Validate phone number has 10-15 digits."""
     digits = "".join(c for c in phone if c.isdigit())
     if 10 <= len(digits) <= 15:
         return ValidationResult.ok()
@@ -222,6 +243,7 @@ def validate_phone(phone: str, field_name: str = "phone") -> ValidationResult:
 
 
 def validate_hex_string(value: str, field_name: str, expected_len: int) -> ValidationResult:
+    """Validate hex string of expected byte length."""
     if len(value) == expected_len * 2 and all(c in "0123456789abcdefABCDEF" for c in value):
         return ValidationResult.ok()
     return ValidationResult.error(
@@ -231,6 +253,7 @@ def validate_hex_string(value: str, field_name: str, expected_len: int) -> Valid
 
 
 def validate_timestamp(ts: int, field_name: str = "timestamp") -> ValidationResult:
+    """Validate epoch-millis timestamp is within 2000-2100."""
     if 946684800000 <= ts <= 4102444800000:
         return ValidationResult.ok()
     return ValidationResult.error(
@@ -240,16 +263,19 @@ def validate_timestamp(ts: int, field_name: str = "timestamp") -> ValidationResu
 
 
 def validate_symbol(symbol: str, field_name: str = "symbol") -> ValidationResult:
+    """Validate trading symbol format (e.g. BTC/USD)."""
     pattern = r"^[A-Z0-9]{2,10}/[A-Z0-9]{2,10}\Z"
     return validate_pattern(value=symbol, field_name=field_name, pattern=pattern)
 
 
 def validate_instrument_id(instrument_id: str, field_name: str = "instrument_id") -> ValidationResult:
+    """Validate lowercase instrument identifier."""
     pattern = r"^[a-z0-9]{2,20}\Z"
     return validate_pattern(value=instrument_id, field_name=field_name, pattern=pattern)
 
 
 def validate_price(price: float, field_name: str = "price") -> ValidationResult:
+    """Validate price is positive and below maximum."""
     result = ValidationResult.ok()
     if price <= 0.0:
         result.add_error(field_name, "invalid_price", "Price must be positive")
@@ -259,6 +285,7 @@ def validate_price(price: float, field_name: str = "price") -> ValidationResult:
 
 
 def validate_quantity(qty: float, field_name: str = "quantity") -> ValidationResult:
+    """Validate quantity is positive and below maximum."""
     result = ValidationResult.ok()
     if qty <= 0.0:
         result.add_error(field_name, "invalid_quantity", "Quantity must be positive")
@@ -352,6 +379,7 @@ def validate_account_payload(payload: Dict[str, Any]) -> ValidationResult:
 
 @dataclass
 class MessageEnvelope:
+    """Protocol message envelope with header fields and payload."""
     message_id: int
     message_type: int
     schema_version: int
@@ -365,6 +393,7 @@ class MessageEnvelope:
     checksum: Optional[int] = None
 
     def validate(self) -> ValidationResult:
+        """Validate envelope header fields against protocol constraints."""
         result = ValidationResult.ok()
 
         if self.schema_version < MIN_COMPATIBLE_VERSION or self.schema_version > PROTOCOL_VERSION:
@@ -402,6 +431,7 @@ class MessageEnvelope:
         return result
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize envelope to a dictionary."""
         return {
             "message_id": self.message_id,
             "message_type": self.message_type,
@@ -418,6 +448,7 @@ class MessageEnvelope:
 
 
 def _message_id_domain(message_id: int) -> Optional[str]:
+    """Return the domain name for a message ID, or None."""
     for domain, (lo, hi) in VALID_MESSAGE_ID_RANGES.items():
         if lo <= message_id <= hi:
             return domain
@@ -430,6 +461,7 @@ def _message_id_domain(message_id: int) -> Optional[str]:
 
 @dataclass
 class Frame:
+    """Low-level protocol frame wrapping a message payload."""
     version: int = PROTOCOL_VERSION
     message_type: int = 0
     flags: int = 0
@@ -438,12 +470,14 @@ class Frame:
     checksum: Optional[int] = None
 
     def is_valid(self) -> bool:
+        """Return True if frame version and payload size are valid."""
         return (
             MIN_COMPATIBLE_VERSION <= self.version <= PROTOCOL_VERSION
             and len(self.payload) <= FRAME_MAX_PAYLOAD_SIZE
         )
 
     def total_size(self) -> int:
+        """Return total wire size of the frame in bytes."""
         return FRAME_HEADER_SIZE + len(self.payload) + (4 if self.checksum is not None else 0)
 
 
@@ -453,12 +487,14 @@ class Frame:
 
 @dataclass
 class RpcError:
+    """RPC error response with code, message, and optional identifiers."""
     code: int
     message: str
     method_id: Optional[int] = None
     request_id: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize RPC error to a dictionary."""
         return {
             "code": self.code,
             "message": self.message,
