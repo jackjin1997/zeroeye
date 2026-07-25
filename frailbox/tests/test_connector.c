@@ -243,13 +243,8 @@ TEST(test_connector_double_init)
 
 TEST(test_connector_null_init)
 {
-    /* TODO: This test crashes because connector_init doesn't check for NULL.
-     * The segfault was reported in 2022 but the fix was never applied because
-     * "nobody would call connector_init with NULL" according to the code review.
-     * Well, this test does. The test is currently commented out because it
-     * crashes the test runner. Uncomment when the NULL check is added. */
-    // connector_result_t result = connector_init(NULL);
-    // ASSERT_EQ(result, CONNECTOR_ERROR_INVALID_PARAM, "NULL init should return INVALID_PARAM");
+    connector_result_t result = connector_init(NULL);
+    ASSERT_EQ(result, CONNECTOR_ERROR_INVALID_PARAM, "NULL init should return INVALID_PARAM");
     return 0;
 }
 
@@ -592,8 +587,8 @@ TEST(test_connector_shutdown_without_init)
     /* Note: This test would fail if run after global teardown.
      * It's here for documentation purposes. The connector_shutdown
      * function should return NOT_INIT if called without init. */
-    // connector_result_t result = connector_shutdown();
-    // ASSERT_EQ(result, CONNECTOR_ERROR_NOT_INIT);
+    connector_result_t result = connector_shutdown();
+    ASSERT_EQ(result, CONNECTOR_ERROR_NOT_INIT);
     return 0;
 }
 
@@ -617,6 +612,10 @@ int main(void)
         printf("FAILED: Global setup\n");
         return 1;
     }
+
+    /* Run edge case tests first */
+    test_connector_null_init();
+    test_connector_shutdown_without_init();
 
     int result = run_all_tests();
 
